@@ -27,6 +27,7 @@
 "funding":[],
 "institution":"",
 "issues":[],
+"legality":{"copyright":null, "license":null, "credit":null},
 "make_public":false,
 "metadata_created_by":"",
 "metadata_source":"",
