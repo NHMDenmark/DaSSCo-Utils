@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field
 from typing import List, Dict, Optional
 
 class IssueModel(BaseModel):
+    category: str
     name: str
     timestamp: Optional[datetime] = None
     description: Optional[str] = None
@@ -48,10 +49,10 @@ class MetadataModel(BaseModel):
     metadata_created_by: Optional[str] = None
     metadata_source: Optional[str] = None
     metadata_updated_by: Optional[str] = None
-    metadata_version: Optional[str] = "v3.0.1"
+    metadata_version: Optional[str] = "v3.0.2"
     mos_id: Optional[str] = None
     multi_specimen: bool = False
-    parent_guid: Optional[str] = None
+    parent_guid: List[str] = []
     payload_type: Optional[str] = None
     pipeline_name: str
     preparation_type: Optional[str] = None

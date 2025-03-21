@@ -27,6 +27,8 @@ class TestMetadata(unittest.TestCase):
             'workstation_name': 'WORKHERB0001',
             'institution': 'NHMD',
             'funding': ["DaSSCo", "DiSSCo"],
+            'legality': {'copyright':"Kanon"},
+            'issues': [{'category':"buffer", 'name':"crash", 'timestamp':'2024-08-16T08:44:57+02:00', 'description':"good job", 'note':"again!!", 'solved':False}]
         }
 
         handler = MetadataHandler(**data)
@@ -59,16 +61,16 @@ class TestMetadata(unittest.TestCase):
             "file_format":"tif",
             "funding":["DaSSCo", "DiSSCo"],
             "institution":"NHMD",
-            "issues":[],
-            "legality":{"copyright": None, "license": None, "credit": None},
+            "issues":[{'category':"buffer", 'name':"crash", 'timestamp':'2024-08-16T08:44:57+02:00', 'description':"good job", 'note':"again!!", 'solved':False}],
+            "legality":{"copyright": "Kanon", "license": None, "credit": None},
             "make_public":False,
             "metadata_created_by":None,
             "metadata_source":None,
             "metadata_updated_by":None,
-            "metadata_version":"v3.0.1",
+            "metadata_version":"v3.0.2",
             "mos_id":None,
             "multi_specimen":False,
-            "parent_guid":None,
+            "parent_guid":[],
             "payload_type":"image",
             "pipeline_name":"PIPEHERB0001",
             "preparation_type":"sheet",
@@ -84,10 +86,29 @@ class TestMetadata(unittest.TestCase):
 
         for key, value in metadata_dict.items():
             
-            if isinstance(value, datetime) and value is not None:
-                value = datetime.strftime(value, "%Y-%m-%dT%H:%M:%S%Z")
+            if isinstance(value, list):
+                list_number = 0
+                for entry in value:
+                    
+                    if isinstance(entry, dict):
+                        for key2, value2 in entry.items():
+                            
+                            if isinstance(value2, datetime) and value2 is not None:
+                                value2 = datetime.strftime(value2, "%Y-%m-%dT%H:%M:%S%Z")
 
-            self.assertEqual(value, expected_json_output[key], f"Failed: {key}:{value}")
+                            self.assertEqual(value2, expected_json_output[key][list_number][key2], f"Failed: {key2}:{value2}")
+
+                        list_number =+ 1
+                    else:
+                        self.assertEqual(value, expected_json_output[key], f"Failed: {key}:{value}")
+                        continue   
+            
+            else:
+                
+                if isinstance(value, datetime) and value is not None:
+                    value = datetime.strftime(value, "%Y-%m-%dT%H:%M:%S%Z")
+
+                self.assertEqual(value, expected_json_output[key], f"Failed: {key}:{value}")
 
         metadata_json = handler.metadata_to_json()
 
