@@ -35,7 +35,7 @@
 "metadata_version":"",
 "mos_id":"",
 "multi_specimen":false,
-"parent_guid":null,
+"parent_guid":[],
 "payload_type":"",
 "pipeline_name":"",
 "preparation_type":"",
