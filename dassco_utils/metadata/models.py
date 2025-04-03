@@ -4,8 +4,9 @@ from typing import List, Dict, Optional
 
 class IssueModel(BaseModel):
     category: str
-    name: str
+    name: Optional[str] = None
     timestamp: Optional[datetime] = None
+    status: Optional[str] = None
     description: Optional[str] = None
     note: Optional[str] = None
     solved: bool = False

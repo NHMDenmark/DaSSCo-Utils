@@ -28,7 +28,7 @@ class TestMetadata(unittest.TestCase):
             'institution': 'NHMD',
             'funding': ["DaSSCo", "DiSSCo"],
             'legality': {'copyright':"Kanon"},
-            'issues': [{'category':"buffer", 'name':"crash", 'timestamp':'2024-08-16T08:44:57+02:00', 'description':"good job", 'note':"again!!", 'solved':False}]
+            'issues': [{'category':"buffer", 'name':"crash", 'timestamp':'2024-08-16T08:44:57+02:00', 'status':'ARCHIVED', 'description':"good job", 'note':"again!!", 'solved':False}]
         }
 
         handler = MetadataHandler(**data)
@@ -61,7 +61,7 @@ class TestMetadata(unittest.TestCase):
             "file_format":"tif",
             "funding":["DaSSCo", "DiSSCo"],
             "institution":"NHMD",
-            "issues":[{'category':"buffer", 'name':"crash", 'timestamp':'2024-08-16T08:44:57+02:00', 'description':"good job", 'note':"again!!", 'solved':False}],
+            "issues":[{'category':"buffer", 'name':"crash", 'timestamp':'2024-08-16T08:44:57+02:00', 'status':'ARCHIVED', 'description':"good job", 'note':"again!!", 'solved':False}],
             "legality":{"copyright": "Kanon", "license": None, "credit": None},
             "make_public":False,
             "metadata_created_by":None,
