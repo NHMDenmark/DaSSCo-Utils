@@ -8,11 +8,9 @@ import json
 from datetime import datetime
 import unittest
 from dassco_utils.metadata.main import MetadataHandler
-from freezegun import freeze_time
 
 class TestMetadata(unittest.TestCase):
 
-    #@freeze_time("2024-08-16T08:44:57+02:00")
     def test_create_json_metadata(self):
 
         data = {

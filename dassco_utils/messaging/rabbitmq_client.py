@@ -1,0 +1,134 @@
+import threading
+from typing import Callable, Optional, Dict
+import pika
+import json
+import signal
+import logging
+
+class RabbitMqClient:
+
+    def __init__(
+        self,
+        host_name: str = 'localhost',
+        run_async: bool = False,
+        credentials: Optional[Dict[str, str]] = None,
+    ):
+        self.host_name = host_name
+        self.run_async = run_async
+        self.credentials = credentials
+        self._connection = self._create_connection()
+        self._producer_channel = None
+        self._consumer_channel = None
+        self._exit_event = threading.Event()
+
+    def _create_connection(self):
+        """
+        Creates a connection to the RabbitMQ server
+        :return: a blocking connection
+        """
+        params_kwargs = {"host": self.host_name}
+        credentials = self._get_credentials()
+
+        if credentials is not None:
+            username, password = credentials
+            params_kwargs["credentials"] = pika.PlainCredentials(username, password)
+
+        connection = pika.BlockingConnection(pika.ConnectionParameters(**params_kwargs))
+        return connection
+
+    def add_handler(self, queue: str, handler: Callable):
+        """
+        Creates a synchronous or asynchronous depending on the run_async flag.
+
+         consumer to a given queue
+        :param queue: The name of the queue to consume messages from
+        :param handler: The callback function to be executed
+        :return: None
+        """
+        if self.run_async:
+            self._add_handler_async(queue, handler)
+        else:
+            self._add_handler_sync(queue, handler)
+
+
+    def _add_handler_sync(self, queue: str, handler: Callable):
+        """
+        Creates a synchronous consumer that listens for messages from a given queue.
+        :param queue: The name of the queue to consume messages from.
+        :param handler: The callback function to be executed whenever a message is consumed from the queue.
+        :return: None
+        """
+        if self._consumer_channel is None:
+            self._consumer_channel = self._connection.channel()
+        self._prepare_consumer(self._consumer_channel, queue, handler)
+
+    def _add_handler_async(self, queue: str, handler: Callable):
+        """
+        Creates an asynchronous consumer that listens for messages from a given queue.
+        :param queue: The name of the queue to consume messages from.
+        :param handler: The callback function to be executed whenever a message is consumed from the queue.
+        :return: None
+        """
+        connection = self._create_connection()
+        channel = connection.channel()
+        thread = threading.Thread(
+            target = self._consumer_thread,
+            args = (channel, queue, handler),
+            daemon = True
+        )
+        thread.start()
+
+    def _consumer_thread(self, channel, queue, handler):
+        self._prepare_consumer(channel, queue, handler)
+        try:
+            channel.start_consuming()
+        except KeyboardInterrupt:
+            channel.close()
+
+    def _prepare_consumer(self, channel, queue, handler):
+        channel.queue_declare(queue=queue, durable=True)
+
+        def callback(ch, method, properties, body):
+            try:
+                message = body.decode('utf-8')
+                handler(message)
+                ch.basic_ack(delivery_tag=method.delivery_tag)
+            except Exception as e:
+                logging.error(f"Failed to process message: {body}. Error: {str(e)}")
+                ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+        channel.basic_consume(queue=queue, on_message_callback=callback)
+
+    def publish(self, queue: str, payload: any):
+        if self._producer_channel is None:
+            self._producer_channel = self._connection.channel()
+        self._producer_channel.basic_publish(
+            exchange = '',
+            routing_key = queue,
+            body= json.dumps(payload),
+            properties=pika.BasicProperties(delivery_mode = pika.DeliveryMode.Persistent))
+
+    def _get_credentials(self):
+        if self.credentials is not None:
+            try:
+                username = self.credentials['username']
+                password = self.credentials['password']
+            except KeyError:
+                raise ValueError("Credentials must contain 'username' and 'password'")
+            return username, password
+        return None
+
+    def _signal_handler(self, _signum, _frame):
+        self._exit_event.set()
+
+    def start_consuming(self):
+        if self.run_async:
+            signal.signal(signal.SIGINT, self._signal_handler)
+            signal.signal(signal.SIGTERM, self._signal_handler)
+            self._exit_event.wait()
+        else:
+            try:
+                self._consumer_channel.start_consuming()
+            except KeyboardInterrupt:
+                self._consumer_channel.close()
+                self._producer_channel.close()
+                self._connection.close()
