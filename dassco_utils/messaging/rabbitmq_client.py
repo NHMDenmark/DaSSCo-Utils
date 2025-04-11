@@ -79,6 +79,13 @@ class RabbitMqClient:
         thread.start()
 
     def _consumer_thread(self, channel, queue, handler):
+        """
+        Used by an asynchronous handler to prepare a threaded consumer.
+        :param channel: The channel used for message consumption.
+        :param queue: The name of the queue to consume messages from.
+        :param handler: The callback function to be executed whenever a message is consumed from the queue.
+        :return: None
+        """
         self._prepare_consumer(channel, queue, handler)
         try:
             channel.start_consuming()
@@ -86,6 +93,18 @@ class RabbitMqClient:
             channel.close()
 
     def _prepare_consumer(self, channel, queue, handler):
+        """
+        Prepares a consumer on the specified channel for the given queue.
+
+        The function declares the queue and ensures that it is durable and sets up a consumer callback.
+        When the message arrives, the callback invokes the provided handler, and acknowledges the message.
+        If the processing of the message fails, the message is negatively acknowledged.
+
+        :param channel: The channel used for message consumption.
+        :param queue: The name of the queue to consume messages from.
+        :param handler: The callback function to be executed whenever a message is consumed from the queue.
+        :return: None
+        """
         channel.queue_declare(queue=queue, durable=True)
 
         def callback(ch, method, properties, body):
@@ -99,6 +118,12 @@ class RabbitMqClient:
         channel.basic_consume(queue=queue, on_message_callback=callback)
 
     def publish(self, queue: str, payload: any):
+        """
+        Publishes a message to the specified queue.
+        :param queue: The name of the queue to publish messages to.
+        :param payload: The message to be published.
+        :return: None
+        """
         if self._producer_channel is None:
             self._producer_channel = self._connection.channel()
         self._producer_channel.basic_publish(
@@ -108,6 +133,10 @@ class RabbitMqClient:
             properties=pika.BasicProperties(delivery_mode = pika.DeliveryMode.Persistent))
 
     def _get_credentials(self):
+        """
+        Extracts the credentials from the provided credentials dictionary.
+        :return: A tuple (username, password) if credentials exist; otherwise None.
+        """
         if self.credentials is not None:
             try:
                 username = self.credentials['username']
@@ -118,9 +147,18 @@ class RabbitMqClient:
         return None
 
     def _signal_handler(self, _signum, _frame):
+        """
+        Handles termination signals and triggers graceful shutdown.
+        """
         self._exit_event.set()
 
     def start_consuming(self):
+        """
+        Starts the message consumption process.
+
+        In asynchronous mode, signal handlers are registered for graceful shutdown.
+        :return: None
+        """
         if self.run_async:
             signal.signal(signal.SIGINT, self._signal_handler)
             signal.signal(signal.SIGTERM, self._signal_handler)
