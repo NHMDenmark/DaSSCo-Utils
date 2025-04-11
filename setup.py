@@ -21,7 +21,7 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     packages=find_packages(),
-    install_requires=['pydantic'],
+    install_requires=['pydantic', 'pika'],
     python_requires=">=3.10",
     classifiers=[
         'Intended Audience :: Developers',
