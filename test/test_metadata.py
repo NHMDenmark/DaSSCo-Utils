@@ -68,7 +68,7 @@ class TestMetadata(unittest.TestCase):
             "metadata_version":"v3.0.2",
             "mos_id":None,
             "multi_specimen":False,
-            "parent_guid":[],
+            "parent_guids":[],
             "payload_type":"image",
             "pipeline_name":"PIPEHERB0001",
             "preparation_type":"sheet",

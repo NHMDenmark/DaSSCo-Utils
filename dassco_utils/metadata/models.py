@@ -53,7 +53,7 @@ class MetadataModel(BaseModel):
     metadata_version: Optional[str] = "v3.0.2"
     mos_id: Optional[str] = None
     multi_specimen: bool = False
-    parent_guid: List[str] = []
+    parent_guids: List[str] = []
     payload_type: Optional[str] = None
     pipeline_name: str
     preparation_type: Optional[str] = None
