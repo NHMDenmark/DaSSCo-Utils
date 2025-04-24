@@ -167,6 +167,8 @@ class RabbitMqClient:
             try:
                 self._consumer_channel.start_consuming()
             except KeyboardInterrupt:
-                self._consumer_channel.close()
-                self._producer_channel.close()
+                if self._consumer_channel is not None:
+                    self._consumer_channel.close()
+                if self._producer_channel is not None:
+                    self._producer_channel.close()
                 self._connection.close()
