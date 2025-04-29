@@ -26,7 +26,9 @@ class TestMetadata(unittest.TestCase):
             'institution': 'NHMD',
             'funding': ["DaSSCo", "DiSSCo"],
             'legality': {'copyright':"Kanon"},
-            'issues': [{'category':"buffer", 'name':"crash", 'timestamp':'2024-08-16T08:44:57+02:00', 'status':'ARCHIVED', 'description':"good job", 'note':"again!!", 'solved':False}]
+            'issues': [{'category':"buffer", 'name':"crash", 'timestamp':'2024-08-16T08:44:57+02:00', 'status':'ARCHIVED', 'description':"good job", 'note':"again!!", 'solved':False}],
+            'specify_attachment_remarks': "Im so readfy for specify",
+            'specify_attachment_title': "Payload type, collection, guid and prep type mesh"
         }
 
         handler = MetadataHandler(**data)
@@ -75,6 +77,8 @@ class TestMetadata(unittest.TestCase):
             "push_to_specify":False,
             "restricted_access":[],
             "session_id":None,
+            'specify_attachment_remarks': "Im so readfy for specify",
+            'specify_attachment_title': "Payload type, collection, guid and prep type mesh",
             "specimen_pid":None,
             "status":None,
             "tags":{},
@@ -93,7 +97,7 @@ class TestMetadata(unittest.TestCase):
                             
                             if isinstance(value2, datetime) and value2 is not None:
                                 value2 = datetime.strftime(value2, "%Y-%m-%dT%H:%M:%S%Z")
-
+                                                        
                             self.assertEqual(value2, expected_json_output[key][list_number][key2], f"Failed: {key2}:{value2}")
 
                         list_number =+ 1

@@ -60,6 +60,8 @@ class MetadataModel(BaseModel):
     push_to_specify: bool = False
     restricted_access: List[str] = []
     session_id: Optional[str] = None
+    specify_attachment_remarks: Optional[str] = None
+    specify_attachment_title: Optional[str] = None
     specimen_pid: Optional[str] = None
     status: Optional[str] = None
     tags: Dict[str, str] = {}
