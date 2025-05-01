@@ -16,6 +16,9 @@ class LegalityModel(BaseModel):
     license: Optional[str] = None
     credit: Optional[str] = None
 
+class ExternalPublisherModel(BaseModel):
+    name: str
+
 class MetadataModel(BaseModel):
     asset_created_by: Optional[str] = None
     asset_deleted_by: Optional[str] = None
@@ -40,7 +43,7 @@ class MetadataModel(BaseModel):
     date_metadata_updated_ars: Optional[datetime] = None
     date_pushed_to_specify: Optional[datetime] = None
     digitiser: Optional[str] = None
-    external_publisher: List[str] = []
+    external_publishers: List[ExternalPublisherModel] = []
     file_format: Optional[str] = None
     funding: List[str] = []
     institution: str
