@@ -38,7 +38,7 @@
 "parent_guids":[],
 "payload_type":"",
 "pipeline_name":"",
-"preparation_type":"",
+"preparation_type":[],
 "push_to_specify":false,
 "restricted_access":[],
 "session_id":"",
