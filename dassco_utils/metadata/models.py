@@ -1,5 +1,5 @@
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Dict, Optional
 
 class IssueModel(BaseModel):
@@ -11,10 +11,14 @@ class IssueModel(BaseModel):
     note: Optional[str] = None
     solved: bool = False
 
+    model_config = ConfigDict(extra='forbid')
+
 class LegalityModel(BaseModel):
     copyright: Optional[str] = None
     license: Optional[str] = None
     credit: Optional[str] = None
+
+    model_config = ConfigDict(extra='forbid')
 
 class ExternalPublisherModel(BaseModel):
     name: str
@@ -69,3 +73,5 @@ class MetadataModel(BaseModel):
     status: Optional[str] = None
     tags: Dict[str, str] = {}
     workstation_name: str
+
+    model_config = ConfigDict(extra='forbid')
