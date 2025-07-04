@@ -68,7 +68,8 @@ class TestMetadata(unittest.TestCase):
             "metadata_created_by":None,
             "metadata_source":None,
             "metadata_updated_by":None,
-            "metadata_version":"v3.0.2",
+            "metadata_version":"v3.0.3",
+            "mime_type":None,
             "mos_id":None,
             "multi_specimen":False,
             "parent_guids":[],
@@ -89,6 +90,9 @@ class TestMetadata(unittest.TestCase):
 
         for key, value in metadata_dict.items():
             
+            if key == "date_metadata_ingested":
+                continue
+            
             if isinstance(value, list):
                 list_number = 0
                 for entry in value:
@@ -104,7 +108,7 @@ class TestMetadata(unittest.TestCase):
                         list_number =+ 1
                     else:
                         self.assertEqual(value, expected_json_output[key], f"Failed: {key}:{value}")
-                        continue   
+                        continue  
             
             else:
                 
@@ -118,8 +122,13 @@ class TestMetadata(unittest.TestCase):
         mdata = json.loads(metadata_json)
 
         for key, value in mdata.items():
+            
+            if key == "date_metadata_ingested":
+                continue
 
             self.assertEqual(value, expected_json_output[key], f"Failed: {key}:{value}")
+
+
 
 if __name__ == "__main__":
     unittest.main()

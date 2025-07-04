@@ -12,7 +12,7 @@ class MetadataHandler:
         try:
             copenhagen_tz = datetime.timezone(datetime.timedelta(hours=2))
             metadata_created_date = datetime.datetime.now(copenhagen_tz).replace(microsecond=0).isoformat()
-            self.__metadata = MetadataModel(**kwargs, date_metadata_created=metadata_created_date)
+            self.__metadata = MetadataModel(**kwargs, date_metadata_ingested=metadata_created_date)
         except Exception as e:
             raise e
 
