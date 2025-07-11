@@ -1,2 +1,2 @@
-from .main import MetadataHandler
+from .metadata_handler import MetadataHandler
 from .models import *

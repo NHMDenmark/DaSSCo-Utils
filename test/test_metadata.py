@@ -7,7 +7,7 @@ sys.path.append(project_root)
 import json
 from datetime import datetime
 import unittest
-from dassco_utils.metadata.main import MetadataHandler
+from dassco_utils.metadata import MetadataHandler
 
 class TestMetadata(unittest.TestCase):
 
@@ -128,6 +128,35 @@ class TestMetadata(unittest.TestCase):
 
             self.assertEqual(value, expected_json_output[key], f"Failed: {key}:{value}")
 
+        handler.update_metadata_value("asset_created_by", "Test User")
+
+        metadata_dict = handler.metadata_to_dict()
+
+        self.assertEqual(metadata_dict["asset_created_by"], "Test User", "Failed to update metadata value")
+
+        handler = MetadataHandler(**data)
+
+        handler.save_metadata_to_file("test_metadata.json")
+
+        self.assertTrue(os.path.isfile("test_metadata.json"), "Failed to save metadata to file")
+
+        with open("test_metadata.json", "r", encoding="utf-8") as f:
+            saved_metadata = json.load(f)
+
+        for key, value in saved_metadata.items():
+            
+            if key == "date_metadata_ingested":
+                continue
+
+            self.assertEqual(value, expected_json_output[key], f"Failed: {key}:{value}")
+
+        handler = MetadataHandler(metadataPath="test_metadata.json")
+
+        metadata_dict = handler.metadata_to_dict()
+
+        self.assertTrue(isinstance(metadata_dict, dict), "Failed to load metadata from file")
+
+        os.remove("test_metadata.json")
 
 
 if __name__ == "__main__":
