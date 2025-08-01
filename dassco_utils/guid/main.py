@@ -54,6 +54,7 @@ def create_guid(mapping: dict, date_str: str, institution_name: str, collection_
     second = hex(int(date_str[17:19]))
     random_number = hex(random.randint(0, 999999))
     derivative = hex(0)
+    future_use = hex(0)
 
     components = [
         padding(year, 3),
@@ -66,7 +67,8 @@ def create_guid(mapping: dict, date_str: str, institution_name: str, collection_
         padding(collection, 3),
         padding(workstation, 2),
         padding(derivative, 3),
-        padding(random_number, 6)
+        padding(random_number, 6),
+        padding(future_use, 5)
     ]
     return '-'.join(components)
 
@@ -85,6 +87,6 @@ def create_derivative_guid(guid: str, derivative_number: int) -> str:
 
     parts[9] = padding(hex(derivative_number), 3)
 
-    new_guid = '-'.join(parts) + '-00000'
+    new_guid = '-'.join(parts)
 
     return new_guid
