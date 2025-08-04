@@ -1,5 +1,6 @@
 import random
-
+import json
+from datetime import datetime
 
 def padding(value: str, length: int) -> str:
     """
@@ -9,6 +10,116 @@ def padding(value: str, length: int) -> str:
     :return: modified string with leading zeros
     """
     return value[2:].zfill(length)
+
+def create_list_of_new_guids(institution_name: str, collection_name: str, source_name: str, derivative: bool = False, request_amount: int = 1) -> list[str]:
+
+    list_of_guids = []
+
+    with open("./guid_mappings.json", "r") as f:
+        mapping = json.load(f)
+
+    if institution_name not in mapping["institution"]:
+        raise ValueError(f"Institution '{institution_name}' not found in mapping.")
+        
+    if collection_name not in mapping["collection"]:
+        raise ValueError(f"Collection '{collection_name}' not found in mapping.")
+        
+    if source_name not in mapping["source"]:
+        raise ValueError(f"Source name '{source_name}' not found in mapping.")
+
+    institution = hex(mapping["institution"][institution_name])
+    collection = hex(mapping["collection"][collection_name])
+    source = hex(mapping["source"][source_name])
+
+    if derivative is True:
+        derivative_value = 1
+    elif derivative is False:
+        derivative_value = 0
+
+    for r in range(request_amount):
+        now = datetime.now()
+
+        year = hex(now.year)
+        month = hex(now.month)
+        day = hex(now.day)
+        hour = hex(now.hour)
+        minute = hex(now.minute)
+        second = hex(now.second)
+        microsecond = hex(now.microsecond//1000)
+        random_number = hex(random.randint(0, 999999))
+        derivative = hex(derivative_value)
+
+        components = [
+            padding(year, 3),
+            padding(month, 1),
+            padding(day, 2),
+            padding(hour, 2),
+            padding(minute, 2),
+            padding(second, 2),
+            padding(microsecond, 3),
+            padding(institution, 3),
+            padding(collection, 3),
+            padding(source, 3),
+            padding(derivative, 1),
+            padding(random_number, 5)            
+        ]
+        guid = '-'.join(components)
+        list_of_guids.append(guid)
+    
+    return list_of_guids
+
+def create_single_new_guid(institution_name: str, collection_name: str, source_name: str, derivative: bool = False) -> str:
+
+    with open("./guid_mappings.json", "r") as f:
+        mapping = json.load(f)
+
+    if institution_name not in mapping["institution"]:
+        raise ValueError(f"Institution '{institution_name}' not found in mapping.")
+        
+    if collection_name not in mapping["collection"]:
+        raise ValueError(f"Collection '{collection_name}' not found in mapping.")
+        
+    if source_name not in mapping["source"]:
+        raise ValueError(f"Source name '{source_name}' not found in mapping.")
+
+    institution = hex(mapping["institution"][institution_name])
+    collection = hex(mapping["collection"][collection_name])
+    source = hex(mapping["source"][source_name])
+
+    if derivative is True:
+        derivative_value = 1
+    elif derivative is False:
+        derivative_value = 0
+
+    now = datetime.now()
+
+    year = hex(now.year)
+    month = hex(now.month)
+    day = hex(now.day)
+    hour = hex(now.hour)
+    minute = hex(now.minute)
+    second = hex(now.second)
+    microsecond = hex(now.microsecond//1000)
+    random_number = hex(random.randint(0, 999999))
+    derivative = hex(derivative_value)
+
+    components = [
+        padding(year, 3),
+        padding(month, 1),
+        padding(day, 2),
+        padding(hour, 2),
+        padding(minute, 2),
+        padding(second, 2),
+        padding(microsecond, 3),
+        padding(institution, 3),
+        padding(collection, 3),
+        padding(source, 3),
+        padding(derivative, 1),
+        padding(random_number, 5)            
+    ]
+    guid = '-'.join(components)
+    
+    return guid
 
 
 def create_guid(mapping: dict, date_str: str, institution_name: str, collection_name: str,

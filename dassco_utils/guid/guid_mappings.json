@@ -1,0 +1,14 @@
+{
+    "institution": {
+        "NHMD": 0,
+        "AU": 1
+    },
+    "collection": {
+        "Vascular Plants": 0,
+        "Entomology": 1
+    },
+    "source": {
+        "WORKHERB0001": 0,
+        "WORKHERB0002": 1        
+    }
+}
