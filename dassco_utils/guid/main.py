@@ -30,80 +30,55 @@ def get_components(year, month, day, hour, minute, second, microsecond, institut
     
     return components
 
-def create_list_of_new_guids(institution_name: str, collection_name: str, source_name: str, derivative: bool = False, request_amount: int = 1, mapping: dict = None) -> list[str]:
+def create_guid_list(institution_name: str, collection_name: str, source_name: str, derivative: bool = False, request_amount: int = 1, mapping: dict = None) -> list[str]:
 
     list_of_guids = []
 
-    if mapping is None:
-        try:
-            with open("./guid_mappings.json", "r") as f:
-                mapping = json.load(f)
-
-            if institution_name not in mapping["institution"]:
-                raise ValueError(f"Institution '{institution_name}' not found in mapping.")
-                
-            if collection_name not in mapping["collection"]:
-                raise ValueError(f"Collection '{collection_name}' not found in mapping.")
-                
-            if source_name not in mapping["source"]:
-                raise ValueError(f"Source name '{source_name}' not found in mapping.")
-        except FileNotFoundError:
-            raise FileNotFoundError("Mapping file 'guid_mappings.json' not found.")
-
-    try:
-        institution = hex(mapping["institution"][institution_name])
-        collection = hex(mapping["collection"][collection_name])
-        source = hex(mapping["source"][source_name])
-    except KeyError as e:
-        raise ValueError(f"Mapping error: {e}")
-
-    if derivative is True:
-        derivative_value = 1
-    elif derivative is False:
-        derivative_value = 0
-
     for r in range(request_amount):
-        now = datetime.now()
+        
+        guid = create_guid(institution_name, collection_name, source_name, derivative, mapping=mapping)
 
-        year = hex(now.year)
-        month = hex(now.month)
-        day = hex(now.day)
-        hour = hex(now.hour)
-        minute = hex(now.minute)
-        second = hex(now.second)
-        microsecond = hex(now.microsecond//1000)
-        derivative = hex(derivative_value)
-        random_number = hex(random.randint(0, 999999))
-
-        components = get_components(year, month, day, hour, minute, second, microsecond, institution, collection, source, derivative, random_number)
-
-        guid = '-'.join(components)
         list_of_guids.append(guid)
     
     return list_of_guids
 
-def create_single_new_guid(institution_name: str, collection_name: str, source_name: str, derivative: bool = False, mapping: dict = None) -> str:
+def create_guid(institution_name: str, collection_name: str, source_name: str, derivative: bool = False, mapping: dict = None) -> str:
 
     if mapping is None:
         try:
             with open("./guid_mappings.json", "r") as f:
                 mapping = json.load(f)
 
-            if institution_name not in mapping["institution"]:
-                raise ValueError(f"Institution '{institution_name}' not found in mapping.")
-                
-            if collection_name not in mapping["collection"]:
-                raise ValueError(f"Collection '{collection_name}' not found in mapping.")
-                
-            if source_name not in mapping["source"]:
-                raise ValueError(f"Source name '{source_name}' not found in mapping.")
+            institutions = mapping["institutions"]
+            collections = mapping["collections"]
+            sources = mapping["sources"]
+            
         except FileNotFoundError:
             raise FileNotFoundError("Mapping file 'guid_mappings.json' not found.")
+    else:
+        try: 
+            institutions = mapping["institutions"]
+            collections = mapping["collections"]
+            sources = mapping["sources"]
+        except KeyError as e:
+            raise ValueError(f"Mapping error: {e}")
+
+    for inst in institutions:
+        if institution_name in inst["name"]:
+            institution = inst["value"]
+
+    for coll in collections:
+        if collection_name in coll["name"]:
+            collection = coll["value"]
+
+    for src in sources:
+        if source_name in src["name"]:
+            source = src["value"]   
 
     try:
-        institution = hex(mapping["institution"][institution_name])
-        collection = hex(mapping["collection"][collection_name])
-        source = hex(mapping["source"][source_name])
+        institution = hex(institution)
+        collection = hex(collection)
+        source = hex(source)
     except KeyError as e:
         raise ValueError(f"Mapping error: {e}")
 
@@ -132,7 +107,7 @@ def create_single_new_guid(institution_name: str, collection_name: str, source_n
 
 
 # This is the old way of creating GUIDs, kept for reference
-def create_guid(mapping: dict, date_str: str, institution_name: str, collection_name: str,
+def create_old_version_guid(mapping: dict, date_str: str, institution_name: str, collection_name: str,
                 workstation_name: str) -> str:
     """
     Creates a unique ID according to the following specs:
@@ -194,7 +169,7 @@ def create_guid(mapping: dict, date_str: str, institution_name: str, collection_
     return '-'.join(components)
 
 # This is the old way of creating GUIDs for derivatives, kept for reference
-def create_derivative_guid(guid: str, derivative_number: int) -> str:
+def create_old_version_derivative_guid(guid: str, derivative_number: int) -> str:
     """
     Creates a GUID for derivatives from the existing GUID of the parent asset. Only works if the parent guid is not derived as well.
     :param guid: the GUID of the parent asset
