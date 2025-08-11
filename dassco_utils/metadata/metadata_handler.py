@@ -3,25 +3,24 @@ import os
 import json
 import datetime
 
-
 class MetadataHandler:
 
-    def __init__(self, metadataPath=None, **kwargs):
+    def __init__(self, metadata_path=None, **kwargs):
         """
         Initialize the MetadataHandler object.
-        If metadataPath is provided, load metadata from file.
+        If metadata_path is provided, load metadata from file.
         Otherwise, initialize using kwargs.
 
-        :param metadataPath: Path to existing metadata JSON file.
+        :param metadata_path: Path to existing metadata JSON file.
         :param kwargs: Metadata fields if not using a file.
         """
         try:
             copenhagen_tz = datetime.timezone(datetime.timedelta(hours=2))
             metadata_created_date = datetime.datetime.now(copenhagen_tz).replace(microsecond=0).isoformat()
-            if metadataPath is not None:
-                if not os.path.isfile(metadataPath):
-                    raise FileNotFoundError(f"Metadata file not found: {metadataPath}")
-                with open(metadataPath, "r", encoding="utf-8") as f:
+            if metadata_path is not None:
+                if not os.path.isfile(metadata_path):
+                    raise FileNotFoundError(f"Metadata file not found: {metadata_path}")
+                with open(metadata_path, "r", encoding="utf-8") as f:
                     metadata_dict = json.load(f)
                 self.__metadata = MetadataModel(**metadata_dict)
             else:
@@ -31,15 +30,13 @@ class MetadataHandler:
 
     def metadata_to_json(self) -> str:
         """
-        Returns a JSON representation of the metadata object.
-        :return: JSON representation of the metadata object.
+        Return the metadata as a formatted JSON string
         """
         return self.__metadata.model_dump_json(indent=2)
 
     def metadata_to_dict(self) -> dict:
         """
-        Returns a dictionary representation of the metadata object.
-        :return: Dictionary representation of the metadata object.
+        Return the metadata as a dictionary
         """
         return self.__metadata.model_dump()
 
@@ -60,10 +57,8 @@ class MetadataHandler:
         :param file_path: Path to the file where metadata will be saved.
         """
         try:
-
             m_dict = self.metadata_to_dict()
             converted_dict = self.convert_datetimes(m_dict)
-
             with open(file_path, "w", encoding="utf-8") as f:
                 json.dump(converted_dict, f, indent=2, ensure_ascii=False)
         except Exception as e:

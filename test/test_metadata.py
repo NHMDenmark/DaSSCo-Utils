@@ -84,7 +84,8 @@ class TestMetadata(unittest.TestCase):
             "specimen_pid":None,
             "status":None,
             "tags":{},
-            "workstation_name":"WORKHERB0001"
+            "workstation_name":"WORKHERB0001",
+            "has_thumbnail":False,
             }
         metadata_dict = handler.metadata_to_dict()
 
@@ -150,7 +151,7 @@ class TestMetadata(unittest.TestCase):
 
             self.assertEqual(value, expected_json_output[key], f"Failed: {key}:{value}")
 
-        handler = MetadataHandler(metadataPath="test_metadata.json")
+        handler = MetadataHandler(metadata_path="test_metadata.json")
 
         metadata_dict = handler.metadata_to_dict()
 

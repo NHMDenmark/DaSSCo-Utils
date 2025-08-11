@@ -1,5 +1,5 @@
 from datetime import datetime
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, ConfigDict
 from typing import List, Dict, Optional
 
 class IssueModel(BaseModel):
@@ -27,7 +27,7 @@ class MetadataModel(BaseModel):
     asset_created_by: Optional[str] = None
     asset_deleted_by: Optional[str] = None
     asset_guid: str
-    asset_pid: Optional[str] = None
+    asset_pid: Optional[List[str]] = None
     asset_subject: Optional[str] = None
     asset_updated_by: Optional[str] = None
     audited: bool = False
@@ -70,9 +70,10 @@ class MetadataModel(BaseModel):
     session_id: Optional[str] = None
     specify_attachment_remarks: Optional[str] = None
     specify_attachment_title: Optional[str] = None
-    specimen_pid: Optional[str] = None
+    specimen_pid: Optional[List[str]] = None
     status: Optional[str] = None
     tags: Dict[str, str] = {}
     workstation_name: str
+    has_thumbnail: bool = False
 
     model_config = ConfigDict(extra='forbid')
