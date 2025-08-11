@@ -50,6 +50,7 @@ class MetadataModel(BaseModel):
     external_publishers: List[ExternalPublisherModel] = []
     file_format: Optional[str] = None
     funding: List[str] = []
+    has_thumbnail: bool = False
     institution: str
     issues: List[IssueModel] = []
     legality: LegalityModel = LegalityModel()
@@ -57,7 +58,7 @@ class MetadataModel(BaseModel):
     metadata_created_by: Optional[str] = None
     metadata_source: Optional[str] = None
     metadata_updated_by: Optional[str] = None
-    metadata_version: Optional[str] = "v3.0.3"
+    metadata_version: Optional[str] = "v3.0.4"
     mime_type: Optional[str] = None
     mos_id: Optional[str] = None
     multi_specimen: bool = False
@@ -74,6 +75,5 @@ class MetadataModel(BaseModel):
     status: Optional[str] = None
     tags: Dict[str, str] = {}
     workstation_name: str
-    has_thumbnail: bool = False
 
     model_config = ConfigDict(extra='forbid')

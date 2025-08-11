@@ -68,7 +68,7 @@ class TestMetadata(unittest.TestCase):
             "metadata_created_by":None,
             "metadata_source":None,
             "metadata_updated_by":None,
-            "metadata_version":"v3.0.3",
+            "metadata_version":"v3.0.4",
             "mime_type":None,
             "mos_id":None,
             "multi_specimen":False,
