@@ -22,7 +22,6 @@ def get_components(year, month, day, hour, minute, second, microsecond, random_n
             padding(microsecond, 3),
             padding(random_number, 6)
         ]
-    print(components)
     return components
 
 def create_guid_list(institution_name: str, request_amount: int = 1) -> list[str]:
