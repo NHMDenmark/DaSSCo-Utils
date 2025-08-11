@@ -1,6 +1,7 @@
 import random
-import json
+import os
 from datetime import datetime
+from dotenv import load_dotenv
 
 def padding(value: str, length: int) -> str:
     """
@@ -11,9 +12,10 @@ def padding(value: str, length: int) -> str:
     """
     return value[2:].zfill(length)
 
-def get_components(year, month, day, hour, minute, second, microsecond, institution, collection, source, derivative, random_number) -> list[str]:
+def get_components(year, month, day, hour, minute, second, microsecond, random_number, constant) -> list[str]:
 
     components = [
+            constant,
             padding(year, 3),
             padding(month, 1),
             padding(day, 2),
@@ -21,71 +23,31 @@ def get_components(year, month, day, hour, minute, second, microsecond, institut
             padding(minute, 2),
             padding(second, 2),
             padding(microsecond, 3),
-            padding(institution, 2),
-            padding(collection, 2),
-            padding(source, 2),
-            padding(derivative, 1),
-            padding(random_number, 5)            
+            padding(random_number, 6)
         ]
     
     return components
 
-def create_guid_list(institution_name: str, collection_name: str, source_name: str, derivative: bool = False, request_amount: int = 1, mapping: dict = None) -> list[str]:
+def create_guid_list(institution_name: str, request_amount: int = 1) -> list[str]:
 
     list_of_guids = []
 
     for r in range(request_amount):
         
-        guid = create_guid(institution_name, collection_name, source_name, derivative, mapping=mapping)
+        guid = create_guid(institution_name)
 
         list_of_guids.append(guid)
     
     return list_of_guids
 
-def create_guid(institution_name: str, collection_name: str, source_name: str, derivative: bool = False, mapping: dict = None) -> str:
+def create_guid(institution_name: str) -> str:
 
-    if mapping is None:
-        try:
-            with open("./guid_mappings.json", "r") as f:
-                mapping = json.load(f)
+    load_dotenv()
+    institution_name = institution_name.upper()
+    constant = os.getenv(f"{institution_name}-ROR")
 
-            institutions = mapping["institutions"]
-            collections = mapping["collections"]
-            sources = mapping["sources"]
-            
-        except FileNotFoundError:
-            raise FileNotFoundError("Mapping file 'guid_mappings.json' not found.")
-    else:
-        try: 
-            institutions = mapping["institutions"]
-            collections = mapping["collections"]
-            sources = mapping["sources"]
-        except KeyError as e:
-            raise ValueError(f"Mapping error: {e}")
-
-    for inst in institutions:
-        if institution_name in inst["name"]:
-            institution = inst["value"]
-
-    for coll in collections:
-        if collection_name in coll["name"]:
-            collection = coll["value"]
-
-    for src in sources:
-        if source_name in src["name"]:
-            source = src["value"]   
-
-    try:
-        institution = hex(institution)
-        collection = hex(collection)
-        source = hex(source)
-    except KeyError as e:
-        raise ValueError(f"Mapping error: {e}")
-
-    if derivative is True:
-        derivative_value = 1
-    elif derivative is False:
-        derivative_value = 0
+    if not constant:
+        raise ValueError(f"ROR constant for institution '{institution_name}' not found in environment variables.")
 
     now = datetime.now()
 
@@ -96,13 +58,11 @@ def create_guid(institution_name: str, collection_name: str, source_name: str, d
     minute = hex(now.minute)
     second = hex(now.second)
     microsecond = hex(now.microsecond//1000)
-    derivative = hex(derivative_value)
-    random_number = hex(random.randint(0, 999999))
+    random_number = hex(random.randint(0, 15999999))
 
-    components = get_components(year, month, day, hour, minute, second, microsecond, institution, collection, source, derivative, random_number)
+    components = get_components(year, month, day, hour, minute, second, microsecond, random_number, constant)
 
-    guid = '-'.join(components)
-    
+    guid = ''.join(components)
     return guid
 
 
