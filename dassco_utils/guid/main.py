@@ -1,7 +1,5 @@
 import random
-import os
 from datetime import datetime
-from dotenv import load_dotenv
 
 def padding(value: str, length: int) -> str:
     """
@@ -13,7 +11,6 @@ def padding(value: str, length: int) -> str:
     return value[2:].zfill(length)
 
 def get_components(year, month, day, hour, minute, second, microsecond, random_number, constant) -> list[str]:
-
     components = [
             constant,
             padding(year, 3),
@@ -25,30 +22,24 @@ def get_components(year, month, day, hour, minute, second, microsecond, random_n
             padding(microsecond, 3),
             padding(random_number, 6)
         ]
-    
+    print(components)
     return components
 
 def create_guid_list(institution_name: str, request_amount: int = 1) -> list[str]:
-
     list_of_guids = []
 
     for r in range(request_amount):
-        
         guid = create_guid(institution_name)
-
         list_of_guids.append(guid)
     
     return list_of_guids
 
-def create_guid(institution_name: str) -> str:
-
-    load_dotenv()
-    institution_name = institution_name.upper()
-    constant = os.getenv(f"{institution_name}-ROR")
-
-    if not constant:
-        raise ValueError(f"ROR constant for institution '{institution_name}' not found in environment variables.")
-
+def create_guid(constant: str) -> str:
+    """
+    Create a unique guid.
+    :param constant: added to the guid
+    :return: a unique guid
+    """
     now = datetime.now()
 
     year = hex(now.year)
@@ -64,7 +55,6 @@ def create_guid(institution_name: str) -> str:
 
     guid = ''.join(components)
     return guid
-
 
 # This is the old way of creating GUIDs, kept for reference
 def create_old_version_guid(mapping: dict, date_str: str, institution_name: str, collection_name: str,
