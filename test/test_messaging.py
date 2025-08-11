@@ -33,7 +33,7 @@ def test_add_handler(rabbit_client):
     client = RabbitMqClient()
     done = [False, '']
 
-    def dummy_handler(msg):
+    def dummy_handler(msg, props):
         done[0] = True
         done[1] = msg
 
@@ -51,7 +51,7 @@ def test_add_handler(rabbit_client):
     body = json.dumps({'id': '5'}).encode('utf-8')
     callback(channel, MagicMock(), None, body)
     assert done[0] == True
-    assert done[1] == '{"id": "5"}'
+    assert done[1] == {"id": "5"}
 
 @patch('threading.Thread')
 def test_async_consumer(mock_thread, rabbit_client):

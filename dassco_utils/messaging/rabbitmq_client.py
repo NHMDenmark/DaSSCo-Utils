@@ -1,9 +1,11 @@
 import threading
-from typing import Callable, Optional, Dict
 import pika
 import json
 import signal
 import logging
+
+from dassco_utils.messaging.exceptions import TransientError, FatalError
+from typing import Callable, Optional, Dict
 
 class RabbitMqClient:
 
@@ -13,6 +15,12 @@ class RabbitMqClient:
         run_async: bool = False,
         credentials: Optional[Dict[str, str]] = None,
     ):
+        """
+        Initialize a RabbitMQ client
+        :param host_name: RabbitMQ host (default: 'localhost')
+        :param run_async: If True, messages handlers run in separate threads.
+        :param credentials: Optional dict with 'username' and 'password'
+        """
         self.host_name = host_name
         self.run_async = run_async
         self.credentials = credentials
@@ -23,8 +31,7 @@ class RabbitMqClient:
 
     def _create_connection(self):
         """
-        Creates a connection to the RabbitMQ server
-        :return: a blocking connection
+        Open a blocking connection to the RabbitMQ server.
         """
         params_kwargs = {"host": self.host_name}
         credentials = self._get_credentials()
@@ -38,11 +45,12 @@ class RabbitMqClient:
 
     def add_handler(self, queue: str, handler: Callable):
         """
-        Creates a synchronous or asynchronous depending on the run_async flag.
+        Register a message handler for the given queue.
 
-         consumer to a given queue
-        :param queue: The name of the queue to consume messages from
-        :param handler: The callback function to be executed
+        Uses a threaded consumer if `run_async=True, otherwise runs synchronously.
+
+        :param queue: The name of the queue to consume messages from.
+        :param handler: The callback function to be executed whenever a message is consumed from the queue.
         :return: None
         """
         if self.run_async:
@@ -50,13 +58,9 @@ class RabbitMqClient:
         else:
             self._add_handler_sync(queue, handler)
 
-
     def _add_handler_sync(self, queue: str, handler: Callable):
         """
-        Creates a synchronous consumer that listens for messages from a given queue.
-        :param queue: The name of the queue to consume messages from.
-        :param handler: The callback function to be executed whenever a message is consumed from the queue.
-        :return: None
+        Create a blocking consumer for the given queue and handler.
         """
         if self._consumer_channel is None:
             self._consumer_channel = self._connection.channel()
@@ -64,10 +68,7 @@ class RabbitMqClient:
 
     def _add_handler_async(self, queue: str, handler: Callable):
         """
-        Creates an asynchronous consumer that listens for messages from a given queue.
-        :param queue: The name of the queue to consume messages from.
-        :param handler: The callback function to be executed whenever a message is consumed from the queue.
-        :return: None
+        Create an asynchronous consumer for the given queue and handler.
         """
         connection = self._create_connection()
         channel = connection.channel()
@@ -81,10 +82,6 @@ class RabbitMqClient:
     def _consumer_thread(self, channel, queue, handler):
         """
         Used by an asynchronous handler to prepare a threaded consumer.
-        :param channel: The channel used for message consumption.
-        :param queue: The name of the queue to consume messages from.
-        :param handler: The callback function to be executed whenever a message is consumed from the queue.
-        :return: None
         """
         self._prepare_consumer(channel, queue, handler)
         try:
@@ -94,43 +91,72 @@ class RabbitMqClient:
 
     def _prepare_consumer(self, channel, queue, handler):
         """
-        Prepares a consumer on the specified channel for the given queue.
+        Prepare a consumer for the queue on the given channel.
 
-        The function declares the queue and ensures that it is durable and sets up a consumer callback.
-        When the message arrives, the callback invokes the provided handler, and acknowledges the message.
-        If the processing of the message fails, the message is negatively acknowledged.
-
-        :param channel: The channel used for message consumption.
-        :param queue: The name of the queue to consume messages from.
-        :param handler: The callback function to be executed whenever a message is consumed from the queue.
-        :return: None
+        Behavior:
+            - Declares the queue as durable.
+            - Invokes the given handler function when a message is consumed.
+            - On TransientError: retries until `max_retries` is reached.
+            - On FatalError or unexpected exceptions: drop the message.
+            - Acknowledges successful messages; negatively acknowledges failed ones.
         """
         channel.queue_declare(queue=queue, durable=True)
 
         def callback(ch, method, properties, body):
             try:
+                message = json.loads(body.decode('utf-8'))
+            except json.JSONDecodeError:
                 message = body.decode('utf-8')
-                handler(message)
-                ch.basic_ack(delivery_tag=method.delivery_tag)
-            except Exception as e:
-                logging.error(f"Failed to process message: {body}. Error: {str(e)}")
+            headers = getattr(properties, "headers", None) or {}
+            retries = headers.get('x-retries', 0)
+            try:
+                handler(message, properties)
+            except TransientError as e:
+                max_retries = e.max_retries
+                if retries < max_retries:
+                    logging.error(f"TransientError, retry message {message} {retries + 1}/{max_retries}")
+                    ch.basic_ack(delivery_tag=method.delivery_tag)
+                    new_headers = {**headers, 'x-retries': retries + 1}
+
+                    properties = pika.BasicProperties(
+                        delivery_mode=pika.DeliveryMode.Persistent,
+                        headers=new_headers
+                    )
+                    self.publish(queue, message, properties)
+                else:
+                    logging.error(f"Retry limit {max_retries} reached, dropping message {message!r}.")
+                    ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+            except FatalError as e:
+                logging.error(f"FatalError, dropping message: {str(e)}")
                 ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+            except Exception as e:
+                logging.error(f"Unexpected error, dropping message: {str(e)}")
+                ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+            else:
+                ch.basic_ack(delivery_tag=method.delivery_tag)
+
         channel.basic_consume(queue=queue, on_message_callback=callback)
 
-    def publish(self, queue: str, payload: any):
+    def publish(self, queue: str, payload: any, properties: Optional[pika.BasicProperties] = None):
         """
-        Publishes a message to the specified queue.
-        :param queue: The name of the queue to publish messages to.
-        :param payload: The message to be published.
+        Publish a message to the given queue.
+        :param queue: name of the queue.
+        :param payload: message payload.
+        :param properties: messages properties
         :return: None
         """
         if self._producer_channel is None:
             self._producer_channel = self._connection.channel()
+
+        if properties is None:
+            properties = pika.BasicProperties(delivery_mode=pika.DeliveryMode.Persistent)
+
         self._producer_channel.basic_publish(
             exchange = '',
             routing_key = queue,
             body= json.dumps(payload),
-            properties=pika.BasicProperties(delivery_mode = pika.DeliveryMode.Persistent))
+            properties=properties
+        )
 
     def _get_credentials(self):
         """
@@ -154,7 +180,7 @@ class RabbitMqClient:
 
     def start_consuming(self):
         """
-        Starts the message consumption process.
+        Start the message consumption process.
 
         In asynchronous mode, signal handlers are registered for graceful shutdown.
         :return: None
