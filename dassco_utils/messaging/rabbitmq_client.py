@@ -3,6 +3,7 @@ import pika
 import json
 import signal
 import logging
+import ssl
 
 from dassco_utils.messaging.exceptions import TransientError, FatalError
 from typing import Callable, Optional, Dict
@@ -14,6 +15,7 @@ class RabbitMqClient:
         host_name: str = 'localhost',
         run_async: bool = False,
         credentials: Optional[Dict[str, str]] = None,
+        enable_tls: bool = False,
     ):
         """
         Initialize a RabbitMQ client
@@ -24,6 +26,7 @@ class RabbitMqClient:
         self.host_name = host_name
         self.run_async = run_async
         self.credentials = credentials
+        self.enable_tls = enable_tls
         self._connection = self._create_connection()
         self._producer_channel = None
         self._consumer_channel = None
@@ -39,6 +42,11 @@ class RabbitMqClient:
         if credentials is not None:
             username, password = credentials
             params_kwargs["credentials"] = pika.PlainCredentials(username, password)
+
+        if self.enable_tls:
+            params_kwargs['port'] = 5671
+            ssl_ctx = ssl.create_default_context()
+            params_kwargs['ssl_options'] = pika.SSLOptions(ssl_ctx, server_hostname=self.host_name)
 
         connection = pika.BlockingConnection(pika.ConnectionParameters(**params_kwargs))
         return connection
