@@ -2,7 +2,7 @@
   "asset_created_by": "",
   "asset_deleted_by": "",
   "asset_guid": "",
-  "asset_pid": [],
+  "asset_pid": null,
   "asset_subject": "",
   "asset_updated_by": "",
   "audited": false,

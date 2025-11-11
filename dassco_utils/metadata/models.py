@@ -27,7 +27,7 @@ class MetadataModel(BaseModel):
     asset_created_by: Optional[str] = None
     asset_deleted_by: Optional[str] = None
     asset_guid: str
-    asset_pid: Optional[List[str]] = None
+    asset_pid: Optional[str] = None
     asset_subject: Optional[str] = None
     asset_updated_by: Optional[str] = None
     audited: bool = False
