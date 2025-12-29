@@ -1,14 +1,14 @@
 from setuptools import setup, find_packages
 from pathlib import Path
-from dotenv import load_dotenv
+# from dotenv import load_dotenv
 import os
 
-load_dotenv()
+# load_dotenv()
 
 this_directory = Path(__file__).parent
 long_description = (this_directory / "README.md").read_text()
 
-version = os.getenv('PACKAGE_VERSION')
+version = "1.0.0" #os.getenv('PACKAGE_VERSION')
 description = 'DaSSCo Utils'
 
 # Setting up
@@ -21,7 +21,7 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     packages=find_packages(),
-    install_requires=['pydantic', 'pika'],
+    install_requires=['pydantic', 'pika', 'aio-pika'],
     python_requires=">=3.10",
     classifiers=[
         'Intended Audience :: Developers',
