@@ -1,2 +1,2 @@
-from pika import BasicProperties
 from .rabbitmq_client import RabbitMqClient
+from .async_rabbitmq_client import AsyncRabbitMqClient, ConnectionOptions
