@@ -8,7 +8,7 @@ import os
 this_directory = Path(__file__).parent
 long_description = (this_directory / "README.md").read_text()
 
-version = "1.0.0" #os.getenv('PACKAGE_VERSION')
+version = os.getenv('PACKAGE_VERSION')
 description = 'DaSSCo Utils'
 
 # Setting up
