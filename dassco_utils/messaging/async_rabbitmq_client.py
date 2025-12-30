@@ -25,7 +25,7 @@ class AsyncRabbitMqClient:
         if self._producer is None:
             connection = await self._create_connection()
             self._producer = Producer(connection)
-        await self._producer.publish(queue, json.dumps(payload), headers)
+        await self._producer.publish(queue, payload, headers)
 
     async def add_handler(self, queue: str, handler: Callable) -> None:
         if self._consumer is None:
