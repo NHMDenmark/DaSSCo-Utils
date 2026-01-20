@@ -12,29 +12,54 @@ class ConnectionOptions(object):
 
 class AsyncRabbitMqClient:
     def __init__(self, options: ConnectionOptions = None):
+        """
+        Initialize an asynchronous RabbitMQ client
+        :param options: connection options (if None, defaults are used)
+        """
         self._options = options if options else ConnectionOptions()
+        self._consumer_connection = None
         self._producer = None
-        self._consumer = None
+        self._consumers = []
 
     async def _create_connection(self) -> AbstractConnection:
+        """
+        Create a robust RabbitMQ connection
+        """
         url = f"amqp://{self._options.username}:{self._options.password}@{self._options.host_name}/"
         connection = await connect_robust(url)
         return connection
 
     async def publish(self, queue: str, payload: object, headers: Optional[Dict] = None) -> None:
+        """
+        Publish a message to a queue. Producer is created the first time this is called.
+
+        NOTE: This creates ONE connection for the producer and reuses it for subsequent publishes.
+        :param queue: name of the queue.
+        :param payload: message payload.
+        :param headers: message headers.
+        :return: None
+        """
         if self._producer is None:
             connection = await self._create_connection()
             self._producer = Producer(connection)
         await self._producer.publish(queue, payload, headers)
 
     async def add_handler(self, queue: str, handler: Callable) -> None:
-        if self._consumer is None:
-            connection = await self._create_connection()
-            self._consumer = Consumer(connection)
-        await self._consumer.consume(queue, handler)
+        """
+        Register a consumer handler for a queue.
+        :param queue: name of the queue.
+        """
+        if self._consumer_connection is None:
+            self._consumer_connection = await self._create_connection()
+        consumer = Consumer(self._consumer_connection)
+        self._consumers.append(consumer)
+        await consumer.consume(queue, handler)
 
     @classmethod
     async def loop(cls):
+        """
+        Block forever to keep the event loop alive
+        """
         try:
             await asyncio.Future()
         except asyncio.CancelledError:
@@ -64,11 +89,12 @@ class Producer:
 class Consumer:
     def __init__(self, connection: AbstractConnection):
         self._connection = connection
-        self._consumer_tasks: list[asyncio.Task] = []
+        self._channel = None
 
     async def consume(self, queue_name: str, handler: Callable) -> None:
         assert self._connection is not None
         ch = await self._connection.channel()
+        await ch.set_qos(prefetch_count=1)
         q = await ch.declare_queue(queue_name, durable=True)
 
         async def on_message(msg: AbstractIncomingMessage) -> None:

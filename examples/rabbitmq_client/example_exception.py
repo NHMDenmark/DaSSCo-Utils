@@ -1,5 +1,3 @@
-from time import sleep
-
 from dassco_utils.messaging import RabbitMqClient
 from dassco_utils.messaging.exceptions import FatalError, TransientError
 
