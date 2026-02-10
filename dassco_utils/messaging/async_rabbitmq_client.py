@@ -3,6 +3,7 @@ import json
 from typing import Callable, Optional, Dict
 from aio_pika import Message, DeliveryMode, connect_robust
 from aio_pika.abc import AbstractConnection, AbstractIncomingMessage
+from loguru import logger
 
 class ConnectionOptions(object):
     host_name: str = 'localhost'
@@ -43,6 +44,7 @@ class AsyncRabbitMqClient:
             connection = await self._create_connection()
             self._producer = Producer(connection)
         await self._producer.publish(queue, payload, headers)
+        logger.info(f"Published message to queue: {queue}")
 
     async def add_handler(self, queue: str, handler: Callable) -> None:
         """
@@ -103,10 +105,15 @@ class Consumer:
             except json.JSONDecodeError:
                 payload = msg.body.decode('utf-8')
             try:
+                logger.debug( f"Processing message from {queue_name}")
                 await handler(payload, msg)
                 await msg.ack()
+                logger.debug(f"Successfully processed message from {queue_name}")
             except Exception as e:
-                print(e)
+                logger.error(
+                    f"Handler error for queue {queue_name}: {e}",
+                    exc_info=True
+                )
                 await msg.nack(requeue=False)
 
         await q.consume(on_message, no_ack=False)

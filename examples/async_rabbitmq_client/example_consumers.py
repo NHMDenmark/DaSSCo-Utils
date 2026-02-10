@@ -1,5 +1,8 @@
 import asyncio
 from dassco_utils.messaging import AsyncRabbitMqClient
+from loguru import logger
+
+logger.enable('dassco_utils.messaging')
 
 async def handler_one(msg, props):
     print('Handler One Running')
