@@ -3,7 +3,8 @@ from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Dict
 import uuid
 import traceback
-from dassco_utils.messaging import AsyncRabbitMqClient
+from async_rabbitmq_client import AsyncRabbitMqClient
+from loguru import logger
 
 @dataclass
 class Asset:
@@ -20,78 +21,130 @@ class OrchestrationEvent:
     reply_queue: str
 
 class OrchestrationClient:
+    """
+    Helper for microservices to communicate with the Orchestrator
+    :param mq_client: An initialized AsyncRabbitMqClient class
+    :param service_name: The name of the service (default: unknown-service)
+    """
     def __init__(self, mq_client: AsyncRabbitMqClient, service_name: str = "unknown-service") -> None:
         self._mq = mq_client
         self._service_name = service_name
         self._handlers: Dict[str, Callable[[OrchestrationEvent], Awaitable[Dict[str, Any]]]] = {}
 
     def handler(self, event_name: str):
+        """
+        Decorator to register event handler
+        :param event_name: The name of the event to handle
+        """
         def decorator(func: Callable[[OrchestrationEvent], Awaitable[Dict[str, Any]]]):
             self._handlers[event_name] = func
             return func
         return decorator
 
     async def register_handlers(self) -> None:
+        """ Register all decorated handlers with the RabbitMq client"""
         for event_name, func in self._handlers.items():
-            async def wrapper(payload: Dict[str, Any], _props, _func=func, _event_name=event_name):
-                try:
-                    evt = OrchestrationEvent(
-                        run_id=uuid.UUID(payload["run_id"]),
-                        idx=int(payload["idx"]),
-                        event=payload["event"],
-                        params=payload["params"],
-                        asset=Asset(**payload["asset"]),
-                        reply_queue=payload["reply_queue"],
-                    )
-                except Exception as e:
-                    print(f"[{self._service_name}] Invalid orchestration payload for '{_event_name}': {payload} ({e})")
-                    await self._send_done(
-                        run_id=payload["run_id"],
-                        idx=payload["idx"],
-                        event=payload["event"],
-                        reply_queue=payload["reply_queue"],
-                        status="FAILED",
-                        result={"error": f"invalid payload: {str(e)}"},
-                    )
-                    return
+            await self._mq.add_handler(event_name, handler=await self._create_wrapper(func, event_name))
 
-                try:
-                    result = await _func(evt)
-                    status = "DONE"
-                except Exception as e:
-                    print(f"[{self._service_name}] Handler '{_event_name}' failed: {e}")
-                    traceback.print_exc()
-                    status = "FAILED"
-                    result = {
-                        "error": str(e),
-                        "traceback": traceback.format_exc(),
+    async def _create_wrapper(self, func: Callable, event_name: str):
+        async def wrapper(payload: Dict[str, Any], msg_props):
+            evt = await self._parse_event(payload, event_name)
+            if evt is None:
+                return
+
+            retry_count = self._get_retry_count(msg_props)
+            evt.params["retry_count"] = retry_count
+            if self._is_max_retries_exceeded(retry_count):
+                self._log(f"Exceeded maximum number of retries in '{evt.run_id}':'{evt.event}'", "ERROR")
+                await self._send_response(
+                    evt,
+                    status="FAILED",
+                    result={
+                        "error": "Max retries exceeded",
+                        "reason": f"Failed after {retry_count} retry attempts"
                     }
-
-                await self._send_done(
-                    run_id=str(evt.run_id),
-                    idx=evt.idx,
-                    event=evt.event,
-                    reply_queue=evt.reply_queue,
-                    status=status,
-                    result=result,
                 )
+                return
 
-            await self._mq.add_handler(event_name, handler=wrapper)
+            try:
+                result = await func(evt)
+                await self._send_response(evt, status="DONE", result=result)
+            except Exception as e:
+                await self._handle_error(evt, e)
+        return wrapper
 
-    async def _send_done(
-            self,
-            run_id: str,
-            idx: int,
-            event: str,
-            reply_queue: str,
-            status: str,
-            result: Dict[str, Any]
+    @classmethod
+    def _get_retry_count(cls, msg_props) -> int:
+        """Get retry count from message headers"""
+        if hasattr(msg_props, "headers") and msg_props.headers:
+            return msg_props.headers.get("x-retry-count", 0)
+        return 0
+
+    def _is_max_retries_exceeded(self, retry_count: int) -> bool:
+        """Check if the retry count has exceeded maximum retries"""
+        max_retries = len(self._mq.get_retry_config().retry_delays)
+        return retry_count >= max_retries
+
+    def _is_retryable(self, exception: Exception) -> bool:
+        """Check if the exception is retryable according to the RabbitMQ configuration"""
+        return isinstance(exception, self._mq.get_retry_config().retryable_exceptions)
+
+    async def _handle_error(self, evt: OrchestrationEvent, error: Exception) -> None:
+        if self._is_retryable(error):
+            raise
+        else:
+            self._log(f"Fatal error in '{evt.run_id}':'{evt.event}': {type(error).__name__}: {error}", "ERROR")
+            await self._send_response(
+                evt,
+                status="FAILED",
+                result={
+                    "error": str(error),
+                    "traceback": traceback.format_exc(),
+                },
+            )
+
+    async def _parse_event(self, payload: Dict[str, Any], event_name: str):
+        try:
+            return OrchestrationEvent(
+                run_id=uuid.UUID(payload["run_id"]),
+                idx=int(payload["idx"]),
+                event=payload["event"],
+                params=payload["params"],
+                asset=Asset(**payload["asset"]),
+                reply_queue=payload["reply_queue"],
+            )
+        except Exception as e:
+            payload_response = {
+                'run_id': payload.get("run_id", ""),
+                'idx': payload.get("idx", -1),
+                'event': payload.get("event", ""),
+                'status': "FAILED",
+                "result": {
+                    'error': 'Invalid payload format',
+                    'details': str(e)
+                }
+            }
+            reply_queue = payload.get("reply_queue")
+            if reply_queue:
+                await self._mq.publish(reply_queue, payload_response)
+            return None
+
+    async def _send_response(
+        self,
+        evt: OrchestrationEvent,
+        status: str,
+        result: Dict[str, Any],
     ) -> None:
+        """ Send response to the Orchestrator """
         payload = {
-            "run_id": run_id,
-            "idx": idx,
-            "event": event,
+            "run_id": str(evt.run_id),
+            "idx": evt.idx,
+            "event": evt.event,
             "status": status,
             "result": result,
         }
-        await self._mq.publish(reply_queue, payload)
+        await self._mq.publish(evt.reply_queue, payload)
+        self._log(f"Sent response: {payload}", "DEBUG")
+
+    def _log(self, message: str, level: str) -> None:
+        logger.log(level, f"[{self._service_name}] {message}")
