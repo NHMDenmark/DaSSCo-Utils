@@ -3,8 +3,7 @@ import json
 from typing import Callable, Optional, Dict
 from aio_pika import Message, DeliveryMode, connect_robust
 from aio_pika.abc import AbstractConnection, AbstractIncomingMessage, ExchangeType
-from exceptions import TransientError
-from loguru import logger
+from .exceptions import TransientError, ExpectedRetry
 
 class ConnectionOptions(object):
     """Configuration options for RabbitMQ client"""
@@ -26,6 +25,7 @@ class RetryConfig(object):
         TimeoutError,
         asyncio.TimeoutError,
         TransientError,
+        ExpectedRetry
     )
 
     @classmethod
@@ -212,8 +212,7 @@ class Consumer:
         body = json.dumps(payload).encode('utf-8')
         m = Message(body=body, headers=headers, delivery_mode=DeliveryMode.PERSISTENT)
         await self._retry_exchange.publish(m, routing_key=retry_queue.name)
-        delay_format = self._retry_config.format_delay(delay)
-        logger.debug(f"Retry {retry_count + 1}/{self._max_retries}: '{queue}' → retry.{delay} (in {delay_format})")
+        # delay_format = self._retry_config.format_delay(delay)
 
     async def _send_to_dlq(
             self,
@@ -280,8 +279,4 @@ class Consumer:
                 else:
                     await msg.nack(requeue=False)
                     await self._send_to_dlq(queue, payload, msg, e)
-                    logger.error(
-                        f"Handler error for queue {queue}: {e}",
-                        exc_info=True
-                    )
         await q.consume(on_message, no_ack=False)

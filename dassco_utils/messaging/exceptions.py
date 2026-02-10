@@ -1,14 +1,17 @@
 class TransientError(Exception):
     """
     Exception raised when a temporary error occurs. The message will be requeued.
-    The default number of retries is 3.
     """
-    def __init__(self, max_retries = 3):
-        super().__init__()
-        self.max_retries = max_retries
+    pass
 
 class FatalError(Exception):
     """
     Exception raised when a fatal error occurs. The message will be dropped.
+    """
+    pass
+
+class ExpectedRetry(Exception):
+    """
+    Exception raised when we intentionally want to retry the message.
     """
     pass

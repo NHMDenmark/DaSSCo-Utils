@@ -1,10 +1,12 @@
 from __future__ import annotations
-from dataclasses import dataclass
-from typing import Any, Awaitable, Callable, Dict
 import uuid
 import traceback
-from async_rabbitmq_client import AsyncRabbitMqClient
-from loguru import logger
+import logging
+from dataclasses import dataclass
+from typing import Any, Awaitable, Callable, Dict
+from .async_rabbitmq_client import AsyncRabbitMqClient
+
+logger = logging.getLogger(__name__)
 
 @dataclass
 class Asset:
@@ -44,11 +46,11 @@ class OrchestrationClient:
     async def register_handlers(self) -> None:
         """ Register all decorated handlers with the RabbitMq client"""
         for event_name, func in self._handlers.items():
-            await self._mq.add_handler(event_name, handler=await self._create_wrapper(func, event_name))
+            await self._mq.add_handler(event_name, handler=await self._create_wrapper(func))
 
-    async def _create_wrapper(self, func: Callable, event_name: str):
+    async def _create_wrapper(self, func: Callable):
         async def wrapper(payload: Dict[str, Any], msg_props):
-            evt = await self._parse_event(payload, event_name)
+            evt = await self._parse_event(payload)
             if evt is None:
                 return
 
@@ -103,7 +105,7 @@ class OrchestrationClient:
                 },
             )
 
-    async def _parse_event(self, payload: Dict[str, Any], event_name: str):
+    async def _parse_event(self, payload: Dict[str, Any]):
         try:
             return OrchestrationEvent(
                 run_id=uuid.UUID(payload["run_id"]),
@@ -147,4 +149,5 @@ class OrchestrationClient:
         self._log(f"Sent response: {payload}", "DEBUG")
 
     def _log(self, message: str, level: str) -> None:
-        logger.log(level, f"[{self._service_name}] {message}")
+        lvl = logging._nameToLevel.get(level.upper(), logging.INFO)
+        logger.log(lvl, "[%s] %s", self._service_name, message)
