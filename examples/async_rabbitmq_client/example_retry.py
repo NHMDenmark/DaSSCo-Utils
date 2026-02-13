@@ -5,8 +5,6 @@ from dassco_utils.messaging.exceptions import TransientError
 async def handler_one(msg, props):
     print('Handler One Running')
     # Sync med Erda
-
-
     raise TransientError('Transient Error')
 
 async def main():

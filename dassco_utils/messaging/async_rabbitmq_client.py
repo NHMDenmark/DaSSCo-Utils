@@ -65,20 +65,29 @@ class AsyncRabbitMqClient:
         """ Get the retry configuration """
         return self._retry_config
 
-    async def publish(self, queue: str, payload: object, headers: Optional[Dict] = None) -> None:
+    async def publish(
+            self,
+            queue: str,
+            payload: object,
+            headers: Optional[Dict] = None,
+            correlation_id: Optional[str] = None,
+            reply_to: Optional[str] = None,
+    ) -> None:
         """
         Publish a message to a queue. Producer is created the first time this is called
 
         NOTE: This creates ONE connection for the producer and reuses it for subsequent publishes
-        :param queue: name of the queue
+        :param queue: name of the queue to publish to
         :param payload: message payload
         :param headers: message headers
+        :param correlation_id: optional correlation ID for RPC pattern
+        :param reply_to: optional reply queue for RPC pattern
         :return: None
         """
         if self._producer is None:
             connection = await self._create_connection()
             self._producer = Producer(connection, self._retry_config)
-        await self._producer.publish(queue, payload, headers)
+        await self._producer.publish(queue, payload, headers, correlation_id, reply_to)
 
     async def add_handler(self, queue: str, handler: Callable) -> None:
         """
@@ -108,12 +117,21 @@ class Producer:
         self._retry_config = retry_config if retry_config else RetryConfig()
         self._channel = None
 
-    async def publish(self, queue: str, payload: object, headers: Optional[Dict] = None) -> None:
+    async def publish(
+            self,
+            queue: str,
+            payload: object,
+            headers: Optional[Dict] = None,
+            correlation_id: Optional[str] = None,
+            reply_to: Optional[str] = None,
+    ) -> None:
         """
         Publish a message to a queue
-        :param queue: the name of the queue
+        :param queue: the name of the queue to publish to
         :param payload: the payload to be published
         :param headers: the message headers
+        :param correlation_id: optional correlation ID for RPC pattern
+        :param reply_to: optional reply queue for RPC pattern
         :return: None
         """
         assert self._connection is not None
@@ -122,7 +140,13 @@ class Producer:
 
         q = await self._channel.declare_queue(queue, durable=True)
         body = json.dumps(payload).encode('utf-8')
-        m = Message(body=body, headers=headers, delivery_mode=DeliveryMode.PERSISTENT)
+        m = Message(
+            body=body,
+            headers=headers,
+            correlation_id=correlation_id,
+            reply_to=reply_to,
+            delivery_mode=DeliveryMode.PERSISTENT
+        )
         await self._channel.default_exchange.publish(m, routing_key=q.name)
 
     async def close(self):
