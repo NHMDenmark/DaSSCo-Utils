@@ -72,6 +72,7 @@ class AsyncRabbitMqClient:
             headers: Optional[Dict] = None,
             correlation_id: Optional[str] = None,
             reply_to: Optional[str] = None,
+            declare_queue: bool = False,
     ) -> None:
         """
         Publish a message to a queue. Producer is created the first time this is called
@@ -87,7 +88,7 @@ class AsyncRabbitMqClient:
         if self._producer is None:
             connection = await self._create_connection()
             self._producer = Producer(connection, self._retry_config)
-        await self._producer.publish(queue, payload, headers, correlation_id, reply_to)
+        await self._producer.publish(queue, payload, headers, correlation_id, reply_to, declare_queue)
 
     async def add_handler(self, queue: str, handler: Callable) -> None:
         """
@@ -124,6 +125,7 @@ class Producer:
             headers: Optional[Dict] = None,
             correlation_id: Optional[str] = None,
             reply_to: Optional[str] = None,
+            declare_queue: bool = False,
     ) -> None:
         """
         Publish a message to a queue
@@ -132,13 +134,16 @@ class Producer:
         :param headers: the message headers
         :param correlation_id: optional correlation ID for RPC pattern
         :param reply_to: optional reply queue for RPC pattern
+        :param declare_queue: if True, ensure queue exists before publishing (Default: False)
         :return: None
         """
         assert self._connection is not None
         if self._channel is None:
             self._channel = await self._connection.channel()
 
-        q = await self._channel.declare_queue(queue, durable=True)
+        if declare_queue:
+            await self._channel.declare_queue(queue, durable=True)
+
         body = json.dumps(payload).encode('utf-8')
         m = Message(
             body=body,
@@ -147,7 +152,7 @@ class Producer:
             reply_to=reply_to,
             delivery_mode=DeliveryMode.PERSISTENT
         )
-        await self._channel.default_exchange.publish(m, routing_key=q.name)
+        await self._channel.default_exchange.publish(m, routing_key=queue)
 
     async def close(self):
         """ Close the Producer """
