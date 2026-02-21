@@ -83,6 +83,7 @@ class AsyncRabbitMqClient:
         :param headers: message headers
         :param correlation_id: optional correlation ID for RPC pattern
         :param reply_to: optional reply queue for RPC pattern
+        :param declare_queue: if True, ensure queue exists before publishing (Default: False)
         :return: None
         """
         if self._producer is None:
